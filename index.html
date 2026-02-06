@@ -2,77 +2,97 @@
 <html lang="zh-TW">
 <head>
     <meta charset="UTF-8">
-    <title>艦隊司令：戰略佈署</title>
+    <title>艦隊司令：終極對抗</title>
     <style>
         :root {
             --bg: #0d1117; --card: #161b22; --accent: #58a6ff;
             --ship: #8b949e; --hit: #f85149; --miss: #30363d; --text: #c9d1d9;
         }
-        body { background: var(--bg); color: var(--text); font-family: sans-serif; display: flex; flex-direction: column; align-items: center; padding: 20px; user-select: none; }
-        .setup-container { display: flex; gap: 30px; margin-bottom: 20px; background: var(--card); padding: 20px; border-radius: 10px; border: 1px solid #30363d; }
-        .ship-dock { display: flex; flex-direction: column; gap: 10px; width: 200px; }
+        body { background: var(--bg); color: var(--text); font-family: 'Segoe UI', sans-serif; display: flex; flex-direction: column; align-items: center; padding: 20px; user-select: none; }
+        .setup-container { display: flex; gap: 20px; flex-wrap: wrap; justify-content: center; }
+        
+        /* 船塢樣式 */
+        .ship-dock { 
+            background: var(--card); padding: 15px; border-radius: 8px; border: 1px solid #30363d;
+            display: flex; flex-direction: column; gap: 10px; width: 180px;
+        }
         .draggable-ship { 
             background: var(--ship); border: 2px solid var(--accent); cursor: grab; 
-            display: flex; border-radius: 4px; align-items: center; justify-content: center; font-size: 12px; color: #000;
+            padding: 10px; border-radius: 4px; color: #000; font-weight: bold; text-align: center;
         }
+        .draggable-ship.vertical { width: 20px; height: 100px; writing-mode: vertical-rl; }
+
+        /* 棋盤樣式 */
         .grid { display: grid; grid-template-columns: repeat(10, 35px); gap: 2px; background: #30363d; padding: 5px; border: 2px solid #444; }
-        .cell { width: 35px; height: 35px; background: var(--cell); display: flex; align-items: center; justify-content: center; }
-        .cell.over { background: rgba(88, 166, 255, 0.3); }
-        .ship-on-board { background: var(--ship) !important; border: 1px solid var(--accent); }
+        .cell { width: 35px; height: 35px; background: var(--cell); display: flex; align-items: center; justify-content: center; font-size: 18px; }
+        .cell.over { background: rgba(88, 166, 255, 0.4); }
+        .ship-placed { background: var(--ship) !important; border: 1px solid var(--accent); }
         .hit { background: var(--hit) !important; color: white; }
-        .miss { background: var(--miss) !important; }
+        .miss { background: var(--miss) !important; color: #666; }
         
-        .controls { margin: 20px; display: flex; gap: 10px; }
-        button { background: #21262d; border: 1px solid #f0f6fc1a; color: var(--accent); padding: 8px 15px; border-radius: 6px; cursor: pointer; }
+        .controls { margin: 20px; display: flex; gap: 10px; flex-wrap: wrap; }
+        button { background: #21262d; border: 1px solid #f0f6fc1a; color: var(--accent); padding: 10px 20px; border-radius: 6px; cursor: pointer; font-size: 14px; }
         button:hover { background: #30363d; }
-        button.primary { background: var(--accent); color: white; }
+        button.active { background: var(--accent); color: white; }
         
-        #status-msg { height: 30px; font-weight: bold; color: var(--accent); }
-        .hidden-ship .ship-on-board { background: var(--cell) !important; border: none; }
+        #status-msg { height: 40px; font-weight: bold; color: var(--accent); font-size: 1.2rem; }
+        .hidden .ship-placed { background: var(--cell) !important; border: none; }
     </style>
 </head>
 <body>
 
-    <h1>艦隊司令：戰略佈署</h1>
-    <div id="status-msg">階段：請將船隻拖拽至棋盤，點擊船隻可旋轉</div>
-
-    <div class="setup-container">
-        <div class="grid-wrapper">
-            <h3>玩家基地 (佈署區)</h3>
-            <div id="p1-board" class="grid"></div>
-        </div>
-        
-        <div class="ship-dock" id="dock">
-            <h3>船塢 (拖曳放置)</h3>
-            <div class="draggable-ship" draggable="true" data-len="5" id="s1">航空母艦 (5)</div>
-            <div class="draggable-ship" draggable="true" data-len="4" id="s2">戰艦 (4)</div>
-            <div class="draggable-ship" draggable="true" data-len="3" id="s3">巡洋艦 (3)</div>
-            <div class="draggable-ship" draggable="true" data-len="3" id="s4">潛艇 (3)</div>
-            <div class="draggable-ship" draggable="true" data-len="2" id="s5">驅逐艦 (2)</div>
-        </div>
-
-        <div class="grid-wrapper">
-            <h3>敵方海域 (攻擊區)</h3>
-            <div id="p2-board" class="grid hidden-ship"></div>
-        </div>
-    </div>
+    <h1>艦隊司令：終極對抗</h1>
+    <div id="status-msg">請選擇模式，並將船隻拖入棋盤</div>
 
     <div class="controls">
+        <button id="pve-btn" class="active" onclick="setMode('PVE')">單人模式 (AI)</button>
+        <button id="pvp-btn" onclick="setMode('PVP')">雙人模式</button>
         <button onclick="clearBoard()">清除盤面 [C]</button>
         <button onclick="undoLast()">回上一步 [Z]</button>
-        <button class="primary" id="start-btn" onclick="startGame()">開始遊戲 [Enter]</button>
+        <button style="background: #238636; color: white;" onclick="startGame()">開始戰鬥 [Enter]</button>
+    </div>
+
+    <div class="setup-container">
+        <div id="dock-area">
+            <h3>艦隊船塢</h3>
+            <div class="ship-dock" id="dock">
+                <p style="font-size: 0.8rem; color: #888;">點擊船隻旋轉方向</p>
+                <div class="draggable-ship" draggable="true" data-len="5" id="ship-5">航空母艦 5</div>
+                <div class="draggable-ship" draggable="true" data-len="4" id="ship-4">戰艦 4</div>
+                <div class="draggable-ship" draggable="true" data-len="3" id="ship-3a">巡洋艦 3</div>
+                <div class="draggable-ship" draggable="true" data-len="3" id="ship-3b">潛艇 3</div>
+                <div class="draggable-ship" draggable="true" data-len="2" id="ship-2">驅逐艦 2</div>
+            </div>
+        </div>
+
+        <div>
+            <h3 id="p1-title">玩家 1 基地</h3>
+            <div id="p1-board" class="grid"></div>
+        </div>
+
+        <div id="p2-area">
+            <h3 id="p2-title">敵方海域</h3>
+            <div id="p2-board" class="grid hidden"></div>
+        </div>
     </div>
 
     <script>
         const SIZE = 10;
+        let mode = 'PVE';
         let p1Data = Array(SIZE).fill().map(() => Array(SIZE).fill(0));
         let p2Data = Array(SIZE).fill().map(() => Array(SIZE).fill(0));
-        let placedShips = []; // 紀錄放置順序以便回退
-        let currentDragShip = null;
-        let isVertical = false;
-        let gameActive = false;
+        let placedShips = [];
+        let gameStarted = false;
+        let currentDrag = null;
+        let vertical = false;
 
-        // 初始化棋盤
+        // 初始化
+        function init() {
+            render();
+            setupDragEvents();
+            generateAI(); 
+        }
+
         function render() {
             draw('p1-board', p1Data, true);
             draw('p2-board', p2Data, false);
@@ -84,15 +104,16 @@
             for(let r=0; r<SIZE; r++) {
                 for(let c=0; c<SIZE; c++) {
                     const cell = document.createElement('div');
-                    cell.className = 'cell' + (data[r][c] === 1 ? ' ship-on-board' : '') + (data[r][c] === 2 ? ' hit' : '') + (data[r][c] === 3 ? ' miss' : '');
-                    if(data[r][c] === 2) cell.innerText = '✕';
-                    if(data[r][c] === 3) cell.innerText = '○';
+                    cell.className = 'cell';
+                    if(data[r][c] === 1) cell.classList.add('ship-placed');
+                    if(data[r][c] === 2) { cell.classList.add('hit'); cell.innerText = '✕'; }
+                    if(data[r][c] === 3) { cell.classList.add('miss'); cell.innerText = '○'; }
                     
-                    if(isP1 && !gameActive) {
+                    if(!gameStarted && isP1) {
                         cell.ondragover = e => { e.preventDefault(); cell.classList.add('over'); };
                         cell.ondragleave = () => cell.classList.remove('over');
-                        cell.ondrop = e => handleDrop(e, r, c);
-                    } else if(!isP1 && gameActive) {
+                        cell.ondrop = e => handleDrop(r, c);
+                    } else if(gameStarted && !isP1) {
                         cell.onclick = () => playerAttack(r, c);
                     }
                     el.appendChild(cell);
@@ -100,58 +121,49 @@
             }
         }
 
-        // 拖曳與旋轉邏輯
-        document.querySelectorAll('.draggable-ship').forEach(ship => {
-            ship.ondragstart = () => { currentDragShip = { len: parseInt(ship.dataset.len), id: ship.id }; };
-            ship.onclick = () => { 
-                isVertical = !isVertical; 
-                ship.style.writingMode = isVertical ? 'vertical-rl' : 'horizontal-tb';
-                document.getElementById('status-msg').innerText = `方向已切換：${isVertical ? '垂直' : '水平'}`;
-            };
-        });
+        // 拖曳處理
+        function setupDragEvents() {
+            document.querySelectorAll('.draggable-ship').forEach(s => {
+                s.onclick = () => {
+                    vertical = !vertical;
+                    s.classList.toggle('vertical');
+                };
+                s.ondragstart = () => { currentDrag = { len: parseInt(s.dataset.len), id: s.id }; };
+            });
+        }
 
-        function handleDrop(e, r, c) {
-            e.preventDefault();
-            const {len, id} = currentDragShip;
-            if (canPlace(p1Data, r, c, len, isVertical)) {
+        function handleDrop(r, c) {
+            const {len, id} = currentDrag;
+            if (canPlace(p1Data, r, c, len, vertical)) {
                 const coords = [];
                 for(let i=0; i<len; i++) {
-                    let nr = isVertical ? r+i : r, nc = isVertical ? c : c+i;
+                    let nr = vertical ? r+i : r, nc = vertical ? c : c+i;
                     p1Data[nr][nc] = 1;
                     coords.push({r: nr, c: nc});
                 }
                 placedShips.push({id, coords});
-                document.getElementById(id).style.display = 'none';
+                document.getElementById(id).style.visibility = 'hidden';
                 render();
             }
         }
 
-        function canPlace(data, r, c, len, vert) {
-            if ((vert && r + len > SIZE) || (!vert && c + len > SIZE)) return false;
-            for(let i=0; i<len; i++) if(data[vert ? r+i : r][vert ? c : c+i] !== 0) return false;
+        function canPlace(data, r, c, len, v) {
+            if((v && r+len > SIZE) || (!v && c+len > SIZE)) return false;
+            for(let i=0; i<len; i++) if(data[v?r+i:r][v?c:c+i] !== 0) return false;
             return true;
         }
 
-        // 快捷功能
-        function clearBoard() { location.reload(); }
-        function undoLast() {
-            if (placedShips.length === 0) return;
-            const last = placedShips.pop();
-            last.coords.forEach(p => p1Data[p.r][p.c] = 0);
-            document.getElementById(last.id).style.display = 'flex';
-            render();
+        // 模式切換與 AI 生成
+        function setMode(m) {
+            mode = m;
+            document.getElementById('pve-btn').className = m === 'PVE' ? 'active' : '';
+            document.getElementById('pvp-btn').className = m === 'PVP' ? 'active' : '';
+            document.getElementById('p2-title').innerText = m === 'PVE' ? '敵方海域' : '玩家 2 基地';
+            clearBoard();
         }
 
-        function startGame() {
-            if (placedShips.length < 5) return alert("請先放完所有船隻！");
-            gameActive = true;
-            document.getElementById('dock').style.display = 'none';
-            document.getElementById('status-msg').innerText = "戰鬥開始！請點擊右側攻擊。";
-            placeAIShips();
-            render();
-        }
-
-        function placeAIShips() {
+        function generateAI() {
+            p2Data = Array(SIZE).fill().map(() => Array(SIZE).fill(0));
             [5,4,3,3,2].forEach(len => {
                 let p = false;
                 while(!p) {
@@ -164,16 +176,44 @@
             });
         }
 
-        // 攻擊與 AI 思考邏輯
+        function clearBoard() {
+            p1Data = Array(SIZE).fill().map(() => Array(SIZE).fill(0));
+            placedShips = [];
+            gameStarted = false;
+            document.querySelectorAll('.draggable-ship').forEach(s => s.style.visibility = 'visible');
+            generateAI();
+            render();
+            document.getElementById('status-msg').innerText = "盤面已清除，請重新佈署";
+        }
+
+        function undoLast() {
+            if(placedShips.length === 0) return;
+            const last = placedShips.pop();
+            last.coords.forEach(p => p1Data[p.r][p.c] = 0);
+            document.getElementById(last.id).style.visibility = 'visible';
+            render();
+        }
+
+        function startGame() {
+            if(placedShips.length < 5) return alert("請放完所有船隻！");
+            gameStarted = true;
+            document.getElementById('status-msg').innerText = "戰鬥開始！請在右側開火。";
+            render();
+        }
+
+        // 攻擊邏輯
         async function playerAttack(r, c) {
-            if (p2Data[r][c] > 1) return;
+            if(p2Data[r][c] > 1) return;
             let hit = p2Data[r][c] === 1;
             p2Data[r][c] = hit ? 2 : 3;
             render();
-            if (!hit) {
-                document.getElementById('status-msg').innerText = "未命中，AI 正在思考中...";
-                await new Promise(res => setTimeout(res, 1500)); // AI 思考感
-                enemyTurn();
+            
+            if(!hit) {
+                document.getElementById('status-msg').innerText = "未命中！換敵方行動...";
+                if(mode === 'PVE') {
+                    await new Promise(r => setTimeout(r, 1500));
+                    enemyTurn();
+                }
             } else {
                 document.getElementById('status-msg').innerText = "命中！連擊開始！";
             }
@@ -182,28 +222,25 @@
         async function enemyTurn() {
             let r, c;
             do { r = Math.floor(Math.random()*SIZE); c = Math.floor(Math.random()*SIZE); } while(p1Data[r][c] > 1);
-            
             let hit = p1Data[r][c] === 1;
             p1Data[r][c] = hit ? 2 : 3;
             render();
-
-            if (hit) {
-                document.getElementById('status-msg').innerText = "AI 擊中了！它正在計劃下一步...";
-                await new Promise(res => setTimeout(res, 2000)); // 增加連擊間隔
+            if(hit) {
+                document.getElementById('status-msg').innerText = "AI 擊中了！它正在思考...";
+                await new Promise(r => setTimeout(r, 2000));
                 enemyTurn();
             } else {
                 document.getElementById('status-msg').innerText = "輪到你了！";
             }
         }
 
-        // 快捷鍵
         window.onkeydown = e => {
             if(e.key.toLowerCase() === 'z') undoLast();
             if(e.key.toLowerCase() === 'c') clearBoard();
             if(e.key === 'Enter') startGame();
         };
 
-        render();
+        init();
     </script>
 </body>
 </html>
