@@ -1,0 +1,186 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>艦隊司令：自定義佈署</title>
+    <style>
+        :root {
+            --bg: #0d1117;
+            --cell: #161b22;
+            --accent: #58a6ff;
+            --ship: #8b949e;
+            --hit: #f85149;
+            --miss: #30363d;
+            --text: #c9d1d9;
+        }
+        body { background: var(--bg); color: var(--text); font-family: sans-serif; display: flex; flex-direction: column; align-items: center; padding: 20px; }
+        .info-panel { background: #1c2128; padding: 15px; border-radius: 8px; margin: 20px; text-align: center; min-width: 300px; border: 1px solid var(--accent); }
+        .game-area { display: flex; gap: 50px; flex-wrap: wrap; justify-content: center; }
+        .grid { display: grid; grid-template-columns: repeat(10, 35px); gap: 2px; background: #30363d; padding: 5px; border: 2px solid #444; }
+        .cell { width: 35px; height: 35px; background: var(--cell); display: flex; align-items: center; justify-content: center; cursor: pointer; transition: 0.1s; }
+        .cell:hover { background: #21262d; }
+        
+        /* 狀態樣式 */
+        .ship { background: var(--ship) !important; border: 1px solid var(--accent); }
+        .hit { background: var(--hit) !important; color: white; font-weight: bold; }
+        .miss { background: var(--miss) !important; color: #888; }
+        
+        button { background: var(--accent); border: none; padding: 10px 20px; border-radius: 5px; cursor: pointer; color: black; font-weight: bold; margin-top: 10px; }
+        button:disabled { background: #30363d; color: #888; cursor: not-allowed; }
+        .hidden-ship .ship { background: var(--cell) !important; border: none; }
+    </style>
+</head>
+<body>
+
+    <h1>艦隊司令：深海行動</h1>
+
+    <div class="info-panel">
+        <div id="status">階段 1：請點擊左側棋盤放置船隻</div>
+        <div id="ship-info">目前放置長度：<span id="current-len">5</span> (方向：水平 [R] 切換)</div>
+        <button id="start-btn" disabled onclick="startBattle()">進入戰鬥</button>
+    </div>
+
+    <div class="game-area">
+        <div>
+            <h3>你的艦隊 (放置區)</h3>
+            <div id="p1-board" class="grid"></div>
+        </div>
+        <div>
+            <h3>敵方海域 (攻擊區)</h3>
+            <div id="p2-board" class="grid hidden-ship"></div>
+        </div>
+    </div>
+
+    <script>
+        const SIZE = 10;
+        const SHIPS_TO_PLACE = [5, 4, 3, 3, 2];
+        let shipIdx = 0;
+        let isVertical = false;
+        let isBattleStarted = false;
+        let p1Data = Array(SIZE).fill().map(() => Array(SIZE).fill(0));
+        let p2Data = Array(SIZE).fill().map(() => Array(SIZE).fill(0));
+        let p1Hits = 0, p2Hits = 0;
+        let totalShipCells = SHIPS_TO_PLACE.reduce((a, b) => a + b, 0);
+
+        // 初始化
+        function createGrid(elId, data, isPlayer) {
+            const el = document.getElementById(elId);
+            el.innerHTML = '';
+            for(let r=0; r<SIZE; r++) {
+                for(let c=0; c<SIZE; c++) {
+                    const cell = document.createElement('div');
+                    cell.className = 'cell';
+                    if (data[r][c] === 1) cell.classList.add('ship');
+                    if (data[r][c] === 2) { cell.classList.add('hit'); cell.innerText = 'X'; }
+                    if (data[r][c] === 3) { cell.classList.add('miss'); cell.innerText = 'O'; }
+                    
+                    cell.onclick = () => isPlayer ? handlePlacement(r, c) : handleAttack(r, c);
+                    el.appendChild(cell);
+                }
+            }
+        }
+
+        // 放置邏輯
+        function handlePlacement(r, c) {
+            if (isBattleStarted || shipIdx >= SHIPS_TO_PLACE.length) return;
+            let len = SHIPS_TO_PLACE[shipIdx];
+            
+            if (canPlace(p1Data, r, c, len, isVertical)) {
+                for(let i=0; i<len; i++) {
+                    p1Data[isVertical ? r+i : r][isVertical ? c : c+i] = 1;
+                }
+                shipIdx++;
+                if (shipIdx < SHIPS_TO_PLACE.length) {
+                    document.getElementById('current-len').innerText = SHIPS_TO_PLACE[shipIdx];
+                } else {
+                    document.getElementById('status').innerText = "佈署完成！點擊下方按鈕開始遊戲";
+                    document.getElementById('start-btn').disabled = false;
+                }
+                createGrid('p1-board', p1Data, true);
+            }
+        }
+
+        function canPlace(data, r, c, len, vert) {
+            if (vert && r + len > SIZE) return false;
+            if (!vert && c + len > SIZE) return false;
+            for(let i=0; i<len; i++) {
+                if (data[vert ? r+i : r][vert ? c : c+i] !== 0) return false;
+            }
+            return true;
+        }
+
+        // 戰鬥邏輯
+        function startBattle() {
+            isBattleStarted = true;
+            document.getElementById('status').innerText = "戰鬥開始！你的回合 (命中可連擊)";
+            placeAIShips();
+            createGrid('p2-board', p2Data, false);
+        }
+
+        function placeAIShips() {
+            SHIPS_TO_PLACE.forEach(len => {
+                let placed = false;
+                while(!placed) {
+                    let v = Math.random() < 0.5, r = Math.floor(Math.random()*SIZE), c = Math.floor(Math.random()*SIZE);
+                    if (canPlace(p2Data, r, c, len, v)) {
+                        for(let i=0; i<len; i++) p2Data[v ? r+i : r][v ? c : c+i] = 1;
+                        placed = true;
+                    }
+                }
+            });
+        }
+
+        function handleAttack(r, c) {
+            if (!isBattleStarted || p2Data[r][c] > 1) return;
+            
+            let hit = p2Data[r][c] === 1;
+            p2Data[r][c] = hit ? 2 : 3;
+            if (hit) p1Hits++;
+            createGrid('p2-board', p2Data, false);
+
+            if (p1Hits === totalShipCells) { alert("你贏了！"); location.reload(); }
+            
+            if (!hit) {
+                document.getElementById('status').innerText = "沒中... 敵方回合";
+                setTimeout(enemyTurn, 600);
+            } else {
+                document.getElementById('status').innerText = "命中！你獲得額外攻擊機會！";
+            }
+        }
+
+        function enemyTurn() {
+            let r, c, hit;
+            do {
+                r = Math.floor(Math.random()*SIZE);
+                c = Math.floor(Math.random()*SIZE);
+            } while(p1Data[r][c] > 1);
+
+            hit = p1Data[r][c] === 1;
+            p1Data[r][c] = hit ? 2 : 3;
+            if (hit) p2Hits++;
+            createGrid('p1-board', p1Data, true);
+
+            if (p2Hits === totalShipCells) { alert("AI 贏了..."); location.reload(); }
+
+            if (hit) {
+                document.getElementById('status').innerText = "AI 命中了！它正在連擊...";
+                setTimeout(enemyTurn, 800);
+            } else {
+                document.getElementById('status').innerText = "你的回合";
+            }
+        }
+
+        // 切換方向 [R]
+        window.addEventListener('keydown', (e) => {
+            if (e.key.toLowerCase() === 'r') {
+                isVertical = !isVertical;
+                document.getElementById('ship-info').innerText = `目前放置長度：${SHIPS_TO_PLACE[shipIdx]} (方向：${isVertical ? '垂直' : '水平'} [R] 切換)`;
+            }
+            if (e.key.toLowerCase() === 'n') location.reload();
+        });
+
+        createGrid('p1-board', p1Data, true);
+    </script>
+</body>
+</html>
